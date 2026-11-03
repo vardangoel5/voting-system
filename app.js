@@ -71,6 +71,16 @@ async function connectWallet() {
     currentAccount = accounts[0];
 
     provider = new ethers.BrowserProvider(window.ethereum);
+    const network = await provider.getNetwork();
+    if (network.chainId !== 11155111n) {
+      throw new Error("Wrong network. Please switch MetaMask to Ethereum Sepolia (chain ID 11155111).");
+    }
+
+    const deployedCode = await provider.getCode(CONTRACT_ADDRESS);
+    if (deployedCode === "0x") {
+      throw new Error("No contract is deployed at the configured address on Sepolia. Deploy Voting.sol and update CONTRACT_ADDRESS in app.js.");
+    }
+
     signer = await provider.getSigner();
     contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
