@@ -1,129 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Blockchain Voting System</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Educational blockchain voting application running on Ethereum Sepolia.">
+  <title>BlockVote — Sepolia Voting Demo</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- Loading Overlay -->
-<div id="loadingOverlay" class="hidden overlay">
-  <div class="spinner"></div>
-  <p id="loadingMsg">Loading...</p>
-</div>
-
-<!-- Notification -->
-<div id="notification" class="notification hidden"></div>
-
-<!-- Header -->
-<header>
-  <div class="header-inner">
-    <div class="logo">
-      <span class="logo-icon">⛓</span>
-      <span>BlockVote</span>
-    </div>
-    <div class="header-right">
-      <span id="adminBadge" class="tag purple hidden">Admin</span>
-      <span id="walletAddress" class="wallet-addr">Not Connected</span>
-      <button id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
-    </div>
-  </div>
-</header>
-
-<!-- Main -->
-<main>
-
-  <!-- Hero -->
-  <section class="hero">
-    <h1>Secure Digital Voting</h1>
-    <p>Decentralized · Transparent · Tamper-Proof</p>
-  </section>
-
-  <!-- Content (hidden until connected) -->
-  <div id="mainContent" class="hidden">
-
-    <!-- Status Bar -->
-    <div class="status-bar">
-      <div class="stat">
-        <span class="stat-label">Voting Status</span>
-        <span id="votingStatus" class="status-badge inactive">INACTIVE</span>
+  <div id="loadingOverlay" class="hidden overlay"><div class="spinner"></div><p id="loadingMsg">Loading…</p></div>
+  <div id="notification" class="notification hidden" role="status" aria-live="polite"></div>
+  <header><div class="header-inner">
+    <a class="logo" href="#"><span class="logo-icon">⛓</span> BlockVote <span class="network-pill">SEPOLIA TESTNET</span></a>
+    <div class="header-right"><span id="adminBadge" class="tag purple hidden">Administrator</span><span id="walletAddress" class="wallet-addr">Not connected</span><button id="connectBtn">Connect MetaMask</button></div>
+  </div></header>
+  <main>
+    <section class="hero"><p class="eyebrow">DECENTRALIZED ELECTION DEMO</p><h1>Every vote, <span>on-chain.</span></h1><p>Transparent voting powered by Ethereum Sepolia smart contracts.</p></section>
+    <section class="notice"><strong>Educational demo only.</strong> Wallet addresses and votes are publicly visible on the blockchain. This system does not provide secret ballots or identity verification and must not be used for real elections.</section>
+    <section id="mainContent" class="hidden">
+      <div class="election-heading"><div><p class="eyebrow">CURRENT ELECTION</p><h2 id="electionTitle">Loading election…</h2><p id="electionDescription" class="muted"></p></div><span id="votingStatus" class="status-badge inactive">SETUP</span></div>
+      <div class="stats-grid">
+        <article class="stat-card"><span>Total votes</span><strong id="totalVotes">0</strong></article>
+        <article class="stat-card"><span>Candidates</span><strong id="candidateCount">0</strong></article>
+        <article class="stat-card"><span>Registered voters</span><strong id="registeredCount">0</strong></article>
+        <article class="stat-card"><span>Your registration</span><strong id="regStatus" class="tag red">Not registered</strong></article>
+        <article class="stat-card"><span>Your ballot</span><strong id="voteStatus" class="tag orange">Not voted</strong></article>
+        <article class="stat-card stat-action"><span>Live contract data</span><button id="refreshBtn" class="secondary-btn">↻ Refresh</button></article>
       </div>
-      <div class="stat">
-        <span class="stat-label">Total Votes</span>
-        <span id="totalVotes" class="stat-value">0</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Your Registration</span>
-        <span id="regStatus" class="tag red">Not Registered</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Your Vote</span>
-        <span id="voteStatus" class="tag orange">Not Voted</span>
-      </div>
-      <div class="stat">
-        <button class="refresh-btn" onclick="refreshAll()">↻ Refresh</button>
-      </div>
-    </div>
-
-    <!-- Winner Banner -->
-    <div id="winnerSection" class="hidden winner-banner">
-      <h2>🏆 Election Winner</h2>
-      <div class="winner-info">
-        <span id="winnerName" class="winner-name"></span>
-        <span id="winnerParty" class="winner-party"></span>
-        <span id="winnerVotes" class="winner-votes"></span> votes
-      </div>
-    </div>
-
-    <!-- Candidates -->
-    <section class="section">
-      <h2>Candidates</h2>
-      <div id="candidateList" class="candidate-grid"></div>
+      <section id="resultSection" class="result-panel hidden"><p class="eyebrow">OFFICIAL ON-CHAIN RESULT</p><h2 id="resultTitle"></h2><p id="resultDetail"></p></section>
+      <section class="section"><div class="section-heading"><div><p class="eyebrow">THE BALLOT</p><h2>Candidates</h2></div><p class="muted">Select one candidate while voting is live.</p></div><div id="candidateList" class="candidate-grid"></div></section>
+      <section id="adminPanel" class="section hidden">
+        <div class="section-heading"><div><p class="eyebrow">ELECTION MANAGEMENT</p><h2>Administrator console</h2></div><span class="tag purple">Admin access</span></div>
+        <p id="adminHelp" class="muted admin-help"></p>
+        <div id="adminSetup" class="admin-grid">
+          <article class="admin-card"><h3>01 / Add candidate</h3><label for="candidateName">Candidate name</label><input id="candidateName" maxlength="80" placeholder="e.g. Alex Johnson"><label for="candidateParty">Affiliation / party</label><input id="candidateParty" maxlength="80" placeholder="e.g. Independent"><button id="addCandidateBtn">Add candidate</button></article>
+          <article class="admin-card"><h3>02 / Register voter</h3><label for="voterAddress">Voter wallet address</label><input id="voterAddress" spellcheck="false" placeholder="0x…"><p class="muted small">Register each voter's MetaMask public address before the election starts.</p><button id="registerVoterBtn">Register voter</button></article>
+          <article class="admin-card"><h3>03 / Election controls</h3><p class="muted small">Starting the election locks candidate and voter registration. Ending it is permanent.</p><div class="button-stack"><button id="startBtn" class="success-btn" disabled>Start voting</button><button id="endBtn" class="danger-btn" disabled>End voting</button></div></article>
+        </div>
+      </section>
+      <section class="section chain-info"><h2>Blockchain verification</h2><p>Contract: <a id="contractLink" href="#" target="_blank" rel="noopener noreferrer"><code id="contractAddress"></code></a></p><p><a id="electionExplorer" href="#" target="_blank" rel="noopener noreferrer">View contract on Sepolia Etherscan ↗</a></p></section>
     </section>
-
-    <!-- Admin Panel -->
-    <section id="adminPanel" class="section hidden admin-section">
-      <h2>Admin Panel</h2>
-
-      <div class="admin-grid">
-
-        <!-- Add Candidate -->
-        <div class="admin-card">
-          <h3>Add Candidate</h3>
-          <input id="candName" type="text" placeholder="Candidate Name" />
-          <input id="candParty" type="text" placeholder="Party Name" />
-          <button onclick="addCandidate()">Add Candidate</button>
-        </div>
-
-        <!-- Register Voter -->
-        <div class="admin-card">
-          <h3>Register Voter</h3>
-          <input id="voterAddr" type="text" placeholder="Voter Wallet Address (0x...)" />
-          <button onclick="registerVoter()">Register</button>
-        </div>
-
-        <!-- Voting Control -->
-        <div class="admin-card">
-          <h3>Voting Control</h3>
-          <div class="btn-row">
-            <button id="startBtn" class="green-btn" onclick="startVoting()">Start Voting</button>
-            <button id="endBtn" class="red-btn" onclick="endVoting()" disabled>End Voting</button>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-  </div>
-</main>
-
-<footer>
-  <p>Blockchain-Based Secure Digital Voting System &mdash; GGSIPU &mdash; PC-399</p>
-</footer>
-
-<script src="app.js"></script>
+    <section id="welcomePanel" class="connect-panel"><div class="connect-icon">◈</div><h2>Connect your wallet to begin</h2><p>Use MetaMask on Ethereum Sepolia to view the election, manage it (admin), or cast your registered vote.</p><button onclick="connectWallet(false)">Connect MetaMask</button></section>
+  </main>
+  <footer><p>BlockVote · GGSIPU · PC-399</p><p>Built for academic demonstration on Ethereum Sepolia</p></footer>
+  <script src="app.js"></script>
 </body>
 </html>
