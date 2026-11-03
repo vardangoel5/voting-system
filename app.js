@@ -83,12 +83,13 @@ async function connectWallet(silent) {
     $("connectBtn").textContent = "Wallet connected";
     $("connectBtn").disabled = true;
     $("mainContent").classList.remove("hidden");
+    $("welcomePanel").classList.add("hidden");
     $("adminPanel").classList.toggle("hidden", !isAdmin);
     $("adminBadge").classList.toggle("hidden", !isAdmin);
     await refreshAll();
   } catch (error) {
     notify(parseError(error), "error");
-    if (!contract) disconnectUI();
+    disconnectUI();
   } finally {
     setBusy(false);
   }
@@ -98,6 +99,7 @@ function disconnectUI() {
   provider = signer = contract = currentAccount = null;
   isAdmin = false;
   $("mainContent").classList.add("hidden");
+  $("welcomePanel").classList.remove("hidden");
   $("adminPanel").classList.add("hidden");
   $("adminBadge").classList.add("hidden");
   $("walletAddress").textContent = "Not connected";
@@ -206,8 +208,10 @@ async function transact(label, action) {
     const receipt = await tx.wait();
     notify(label + " confirmed. View transaction on Etherscan.", "success", EXPLORER + "/tx/" + receipt.hash);
     await refreshAll();
+    return true;
   } catch (error) {
     notify(parseError(error), "error");
+    return false;
   } finally {
     setBusy(false);
   }
@@ -217,16 +221,16 @@ async function addCandidate() {
   const name = $("candidateName").value.trim();
   const party = $("candidateParty").value.trim();
   if (!name || !party) return notify("Enter both a candidate name and affiliation.", "error");
-  await transact("Candidate added", () => contract.addCandidate(name, party));
-  $("candidateName").value = "";
-  $("candidateParty").value = "";
+  if (await transact("Candidate added", () => contract.addCandidate(name, party))) {
+    $("candidateName").value = "";
+    $("candidateParty").value = "";
+  }
 }
 
 async function registerVoter() {
   const address = $("voterAddress").value.trim();
   if (!ethers.isAddress(address) || address === ethers.ZeroAddress) return notify("Enter a valid, non-zero wallet address.", "error");
-  await transact("Voter registered", () => contract.registerVoter(address));
-  $("voterAddress").value = "";
+  if (await transact("Voter registered", () => contract.registerVoter(address))) $("voterAddress").value = "";
 }
 
 async function startVoting() {
