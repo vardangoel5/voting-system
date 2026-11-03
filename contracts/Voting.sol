@@ -1,116 +1,131 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+/// @notice Single-election voting contract for educational/testnet use.
 contract Voting {
     struct Candidate {
-        uint id;
+        uint256 id;
         string name;
         string party;
-        uint voteCount;
+        uint256 voteCount;
     }
 
-    address public admin;
+    address public immutable admin;
+    string public electionTitle;
+    string public electionDescription;
     bool public votingActive;
-    uint public totalVotes;
+    bool public votingStarted;
+    bool public votingEnded;
+    uint256 public totalVotes;
+    uint256 public candidateCount;
+    uint256 public registeredVoterCount;
 
-    mapping(uint => Candidate) public candidates;
+    mapping(uint256 => Candidate) public candidates;
     mapping(address => bool) public hasVoted;
     mapping(address => bool) public registeredVoters;
 
-    uint public candidateCount;
-
-    event VoterRegistered(address voter);
-    event VoteCast(address voter, uint candidateId);
-    event VotingStarted();
-    event VotingEnded();
-    event CandidateAdded(uint id, string name, string party);
+    event CandidateAdded(uint256 indexed id, string name, string party);
+    event VoterRegistered(address indexed voter);
+    event VotingStarted(uint256 timestamp);
+    event VoteCast(address indexed voter, uint256 indexed candidateId);
+    event VotingEnded(uint256 timestamp);
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin");
         _;
     }
 
-    modifier onlyActive() {
-        require(votingActive, "Voting not active");
+    modifier beforeVoting() {
+        require(!votingStarted, "Election already started");
+        require(!votingEnded, "Election already ended");
         _;
     }
 
-    modifier onlyRegistered() {
-        require(registeredVoters[msg.sender], "Not registered");
-        _;
-    }
-
-    constructor() {
+    constructor(string memory title_, string memory description_) {
+        require(bytes(title_).length > 0, "Election title required");
         admin = msg.sender;
-        votingActive = false;
-        totalVotes = 0;
+        electionTitle = title_;
+        electionDescription = description_;
     }
 
-    function addCandidate(string memory _name, string memory _party) public onlyAdmin {
-        require(!votingActive, "Cannot add candidate during voting");
+    function addCandidate(string calldata name, string calldata party)
+        external onlyAdmin beforeVoting
+    {
+        require(bytes(name).length > 0, "Candidate name required");
+        require(bytes(party).length > 0, "Candidate affiliation required");
         candidateCount++;
-        candidates[candidateCount] = Candidate(candidateCount, _name, _party, 0);
-        emit CandidateAdded(candidateCount, _name, _party);
+        candidates[candidateCount] = Candidate(candidateCount, name, party, 0);
+        emit CandidateAdded(candidateCount, name, party);
     }
 
-    function registerVoter(address _voter) public onlyAdmin {
-        require(!registeredVoters[_voter], "Already registered");
-        registeredVoters[_voter] = true;
-        emit VoterRegistered(_voter);
+    function registerVoter(address voter) external onlyAdmin beforeVoting {
+        require(voter != address(0), "Invalid voter address");
+        require(!registeredVoters[voter], "Already registered");
+        registeredVoters[voter] = true;
+        registeredVoterCount++;
+        emit VoterRegistered(voter);
     }
 
-    function startVoting() public onlyAdmin {
-        require(candidateCount > 0, "No candidates");
-        require(!votingActive, "Already active");
+    function startVoting() external onlyAdmin beforeVoting {
+        require(candidateCount >= 2, "Add at least two candidates");
+        votingStarted = true;
         votingActive = true;
-        emit VotingStarted();
+        emit VotingStarted(block.timestamp);
     }
 
-    function endVoting() public onlyAdmin {
-        require(votingActive, "Not active");
+    function endVoting() external onlyAdmin {
+        require(votingActive, "Voting is not active");
         votingActive = false;
-        emit VotingEnded();
+        votingEnded = true;
+        emit VotingEnded(block.timestamp);
     }
 
-    function castVote(uint _candidateId) public onlyActive onlyRegistered {
-        require(!hasVoted[msg.sender], "Already voted");
-        require(_candidateId > 0 && _candidateId <= candidateCount, "Invalid candidate");
+    function castVote(uint256 candidateId) external {
+        require(votingActive, "Voting is not active");
+        require(registeredVoters[msg.sender], "Voter is not registered");
+        require(!hasVoted[msg.sender], "Address has already voted");
+        require(candidateId > 0 && candidateId <= candidateCount, "Invalid candidate");
 
         hasVoted[msg.sender] = true;
-        candidates[_candidateId].voteCount++;
+        candidates[candidateId].voteCount++;
         totalVotes++;
-
-        emit VoteCast(msg.sender, _candidateId);
+        emit VoteCast(msg.sender, candidateId);
     }
 
-    function getCandidate(uint _id) public view returns (
-        uint, string memory, string memory, uint
+    function getCandidate(uint256 id) external view returns (
+        uint256, string memory, string memory, uint256
     ) {
-        Candidate memory c = candidates[_id];
-        return (c.id, c.name, c.party, c.voteCount);
+        require(id > 0 && id <= candidateCount, "Invalid candidate");
+        Candidate storage candidate = candidates[id];
+        return (candidate.id, candidate.name, candidate.party, candidate.voteCount);
     }
 
-    function getWinner() public view returns (string memory name, string memory party, uint voteCount) {
-        require(!votingActive, "Voting still active");
-        require(totalVotes > 0, "No votes cast");
+    /// @return winnerId Zero when there is no unique winner (no votes or a tie).
+    /// @return tied True when two or more candidates share the highest vote count.
+    function getResult() external view returns (
+        uint256 winnerId, uint256 highestVotes, bool tied
+    ) {
+        require(votingEnded, "Election has not ended");
+        if (totalVotes == 0) return (0, 0, false);
 
-        uint maxVotes = 0;
-        uint winnerId = 0;
-        for (uint i = 1; i <= candidateCount; i++) {
-            if (candidates[i].voteCount > maxVotes) {
-                maxVotes = candidates[i].voteCount;
+        for (uint256 i = 1; i <= candidateCount; i++) {
+            uint256 count = candidates[i].voteCount;
+            if (count > highestVotes) {
+                highestVotes = count;
                 winnerId = i;
+                tied = false;
+            } else if (count == highestVotes && count > 0) {
+                tied = true;
+                winnerId = 0;
             }
         }
-        Candidate memory w = candidates[winnerId];
-        return (w.name, w.party, w.voteCount);
     }
 
-    function isRegistered(address _voter) public view returns (bool) {
-        return registeredVoters[_voter];
+    function isRegistered(address voter) external view returns (bool) {
+        return registeredVoters[voter];
     }
 
-    function hasVotedAlready(address _voter) public view returns (bool) {
-        return hasVoted[_voter];
+    function hasVotedAlready(address voter) external view returns (bool) {
+        return hasVoted[voter];
     }
 }
