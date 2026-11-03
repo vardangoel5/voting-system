@@ -37,10 +37,30 @@ window.addEventListener("load", async () => {
 async function handleAccountChange(accounts) {
   if (accounts.length === 0) {
     resetUI();
-  } else {
+    return;
+  }
+
+  try {
     currentAccount = accounts[0];
+    provider = new ethers.BrowserProvider(window.ethereum);
+    const network = await provider.getNetwork();
+    if (network.chainId !== 11155111n) {
+      throw new Error("Wrong network. Please switch MetaMask to Ethereum Sepolia (chain ID 11155111).");
+    }
+
+    const deployedCode = await provider.getCode(CONTRACT_ADDRESS);
+    if (deployedCode === "0x") {
+      throw new Error("No contract is deployed at the configured address on Sepolia. Deploy Voting.sol and update CONTRACT_ADDRESS in app.js.");
+    }
+
+    signer = await provider.getSigner();
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+    document.getElementById("walletAddress").textContent =
+      currentAccount.slice(0, 6) + "..." + currentAccount.slice(-4);
     await initContract();
     await refreshAll();
+  } catch (err) {
+    showError("Could not switch wallet account: " + err.message);
   }
 }
 
@@ -123,16 +143,33 @@ async function loadCandidates() {
       const [id, name, party, votes] = await contract.getCandidate(i);
       const card = document.createElement("div");
       card.className = "candidate-card";
-      card.innerHTML = `
-        <div class="candidate-info">
-          <div class="candidate-name">${name}</div>
-          <div class="candidate-party">${party}</div>
-        </div>
-        <div class="candidate-votes">${votes.toString()} votes</div>
-        ${active && registered && !voted
-          ? `<button class="vote-btn" onclick="castVote(${id})">Vote</button>`
-          : ""}
-      `;
+
+      const info = document.createElement("div");
+      info.className = "candidate-info";
+
+      const candidateName = document.createElement("div");
+      candidateName.className = "candidate-name";
+      candidateName.textContent = name;
+
+      const candidateParty = document.createElement("div");
+      candidateParty.className = "candidate-party";
+      candidateParty.textContent = party;
+
+      const voteCount = document.createElement("div");
+      voteCount.className = "candidate-votes";
+      voteCount.textContent = `${votes.toString()} votes`;
+
+      info.append(candidateName, candidateParty);
+      card.append(info, voteCount);
+
+      if (active && registered && !voted) {
+        const voteButton = document.createElement("button");
+        voteButton.className = "vote-btn";
+        voteButton.textContent = "Vote";
+        voteButton.addEventListener("click", () => castVote(id));
+        card.appendChild(voteButton);
+      }
+
       container.appendChild(card);
     }
 
@@ -281,7 +318,14 @@ function showError(msg) {
 }
 function resetUI() {
   currentAccount = null;
+  provider = null;
+  signer = null;
+  contract = null;
+  isAdmin = false;
   document.getElementById("mainContent").classList.add("hidden");
+  document.getElementById("adminPanel").classList.add("hidden");
+  document.getElementById("adminBadge").classList.add("hidden");
+  document.getElementById("walletAddress").textContent = "";
   document.getElementById("connectBtn").textContent = "Connect Wallet";
   document.getElementById("connectBtn").disabled = false;
 }
