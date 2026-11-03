@@ -100,8 +100,6 @@ contract Voting {
         return (candidate.id, candidate.name, candidate.party, candidate.voteCount);
     }
 
-    /// @return winnerId Zero when there is no unique winner (no votes or a tie).
-    /// @return tied True when two or more candidates share the highest vote count.
     function getResult() external view returns (
         uint256 winnerId, uint256 highestVotes, bool tied
     ) {
