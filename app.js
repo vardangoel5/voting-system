@@ -1,5 +1,5 @@
 // Update this after deploying the current contracts/Voting.sol to Sepolia.
-const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000";
+const CONTRACT_ADDRESS = "0xdAb696e37EEAEf5ed01D974B348d0734A8fA4745";
 const SEPOLIA_CHAIN_ID = 11155111n;
 const EXPLORER = "https://sepolia.etherscan.io";
 
