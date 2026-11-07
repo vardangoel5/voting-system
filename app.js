@@ -79,7 +79,7 @@ async function connectWallet(silent) {
     contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
     const admin = await contract.admin();
     isAdmin = admin.toLowerCase() === currentAccount.toLowerCase();
-    $("walletAddress").textContent = shortAddress(currentAccount);
+    $("walletAddress").textContent = currentAccount;
     $("connectBtn").textContent = "Wallet connected";
     $("connectBtn").disabled = true;
     $("mainContent").classList.remove("hidden");
@@ -138,6 +138,8 @@ async function refreshAll() {
     await loadCandidates(active, ended, registered, voted, Number(count));
     await loadResult(ended, Number(total));
     $("electionExplorer").href = EXPLORER + "/address/" + CONTRACT_ADDRESS;
+    $("resultsExplorer").href = EXPLORER + "/address/" + CONTRACT_ADDRESS;
+    $("resultTotal").textContent = total.toString();
   } catch (error) {
     notify("Could not load election data: " + parseError(error), "error");
   } finally {
@@ -147,7 +149,9 @@ async function refreshAll() {
 
 async function loadCandidates(active, ended, registered, voted, count) {
   const list = $("candidateList");
+  const resultRows = $("resultRows");
   list.replaceChildren();
+  resultRows.replaceChildren();
   if (!count) {
     const empty = document.createElement("p");
     empty.className = "no-data";
@@ -155,8 +159,13 @@ async function loadCandidates(active, ended, registered, voted, count) {
     list.append(empty);
     return;
   }
+  const candidates = [];
   for (let id = 1; id <= count; id++) {
     const [candidateId, name, party, votes] = await contract.getCandidate(id);
+    candidates.push({candidateId, name, party, votes});
+  }
+  for (const candidate of candidates) {
+    const {candidateId, name, party, votes} = candidate;
     const card = document.createElement("article");
     card.className = "candidate-card";
     const heading = document.createElement("h3");
@@ -176,6 +185,28 @@ async function loadCandidates(active, ended, registered, voted, count) {
       card.append(button);
     }
     list.append(card);
+    if (ended) {
+      const percentage = Number(await candidate.votes) / Number(await contract.totalVotes()) * 100;
+      const row = document.createElement("div");
+      row.className = "result-row";
+      const candidateName = document.createElement("span");
+      candidateName.className = "result-name";
+      candidateName.textContent = name;
+      const track = document.createElement("div");
+      track.className = "result-track";
+      const fill = document.createElement("div");
+      fill.className = "result-fill";
+      fill.style.width = percentage.toFixed(1) + "%";
+      track.append(fill);
+      const percent = document.createElement("span");
+      percent.className = "result-percent";
+      percent.textContent = percentage.toFixed(1) + "%";
+      const countLabel = document.createElement("span");
+      countLabel.className = "result-votes";
+      countLabel.textContent = votes.toString() + (Number(votes) === 1 ? " vote" : " votes");
+      row.append(candidateName, track, percent, countLabel);
+      resultRows.append(row);
+    }
   }
 }
 
@@ -190,12 +221,12 @@ async function loadResult(ended, total) {
   }
   const [winnerId, highestVotes, tied] = await contract.getResult();
   if (tied) {
-    $("resultTitle").textContent = "Election ended in a tie";
+    $("resultTitle").textContent = "Result: Tie";
     $("resultDetail").textContent = "Multiple candidates received " + highestVotes.toString() + " votes. The contract does not select a winner.";
   } else {
     const [, name, party] = await contract.getCandidate(winnerId);
-    $("resultTitle").textContent = name + " — " + party;
-    $("resultDetail").textContent = highestVotes.toString() + " votes";
+    $("resultTitle").textContent = "Winner: " + name;
+    $("resultDetail").textContent = party + " · " + highestVotes.toString() + " votes";
   }
 }
 
