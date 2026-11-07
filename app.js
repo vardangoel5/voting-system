@@ -160,6 +160,7 @@ async function loadCandidates(active, ended, registered, voted, count) {
     return;
   }
   const candidates = [];
+  const electionTotalVotes = Number(await contract.totalVotes());
   for (let id = 1; id <= count; id++) {
     const [candidateId, name, party, votes] = await contract.getCandidate(id);
     candidates.push({candidateId, name, party, votes});
@@ -186,7 +187,7 @@ async function loadCandidates(active, ended, registered, voted, count) {
     }
     list.append(card);
     if (ended) {
-      const percentage = Number(await candidate.votes) / Number(await contract.totalVotes()) * 100;
+      const percentage = electionTotalVotes > 0 ? Number(candidate.votes) / electionTotalVotes * 100 : 0;
       const row = document.createElement("div");
       row.className = "result-row";
       const candidateName = document.createElement("span");
