@@ -12,10 +12,11 @@
   <div id="loadingOverlay" class="hidden overlay"><div class="spinner"></div><p id="loadingMsg">Loading…</p></div>
   <div id="notification" class="notification hidden" role="status" aria-live="polite"></div>
   <header><div class="header-inner">
-    <a class="logo" href="#"><span class="logo-icon">⛓</span> BlockVote <span class="network-pill">SEPOLIA TESTNET</span></a>
-    <div class="header-right"><span id="adminBadge" class="tag purple hidden">Administrator</span><span id="walletAddress" class="wallet-addr">Not connected</span><button id="connectBtn">Connect MetaMask</button></div>
+    <a class="logo" href="#" aria-label="BlockVote home"><span class="logo-icon" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M24 2 45 13.5v21L24 46 3 34.5v-21L24 2Z" fill="#1769e8"/><path d="m24 8 15 8.2v15.6L24 40l-15-8.2V16.2L24 8Z" fill="#fff"/><path d="m15 18 9-5 9 5-9 5-9-5Zm0 5 7 4v8l-7-4v-8Zm18 0-7 4v8l7-4v-8Z" fill="#1769e8"/></svg></span><span>Block<span class="logo-blue">Vote</span></span></a>
+    <nav class="main-nav" aria-label="Main navigation"><a href="#home">Home</a><a href="#candidateSection">My Votes</a><a class="active" href="#resultSection">Results</a></nav>
+    <div class="header-right"><span id="adminBadge" class="tag purple hidden">Administrator</span><span class="wallet-pill"><span class="fox-icon" aria-hidden="true">🦊</span><span id="walletAddress" class="wallet-addr">Not connected</span></span><button id="connectBtn">Connect MetaMask</button></div>
   </div></header>
-  <main>
+  <main id="home">
     <section class="hero"><p class="eyebrow">DECENTRALIZED ELECTION DEMO</p><h1>Every vote, <span>on-chain.</span></h1><p>Transparent voting powered by Ethereum Sepolia smart contracts.</p></section>
     <section class="notice"><strong>Educational demo only.</strong> Wallet addresses and votes are publicly visible on the blockchain. This system does not provide secret ballots or identity verification and must not be used for real elections.</section>
     <section id="mainContent" class="hidden">
@@ -28,8 +29,16 @@
         <article class="stat-card"><span>Your ballot</span><strong id="voteStatus" class="tag orange">Not voted</strong></article>
         <article class="stat-card stat-action"><span>Live contract data</span><button id="refreshBtn" class="secondary-btn">↻ Refresh</button></article>
       </div>
-      <section id="resultSection" class="result-panel hidden"><p class="eyebrow">OFFICIAL ON-CHAIN RESULT</p><h2 id="resultTitle"></h2><p id="resultDetail"></p></section>
-      <section class="section"><div class="section-heading"><div><p class="eyebrow">THE BALLOT</p><h2>Candidates</h2></div><p class="muted">Select one candidate while voting is live.</p></div><div id="candidateList" class="candidate-grid"></div></section>
+      <section id="resultSection" class="result-panel hidden">
+        <div class="completed-mark" aria-hidden="true">✓</div>
+        <h2>Election Completed!</h2>
+        <p class="result-subtitle">Final results are now available on the blockchain.</p>
+        <div id="resultRows" class="result-rows"></div>
+        <div class="result-total"><strong>Total Votes</strong><strong id="resultTotal">0</strong></div>
+        <p id="resultTitle" class="result-winner"></p><p id="resultDetail" class="result-detail"></p>
+        <a id="resultsExplorer" class="etherscan-button" href="#" target="_blank" rel="noopener noreferrer">↗ &nbsp;View on Etherscan</a>
+      </section>
+      <section id="candidateSection" class="section"><div class="section-heading"><div><p class="eyebrow">THE BALLOT</p><h2>Candidates</h2></div><p class="muted">Select one candidate while voting is live.</p></div><div id="candidateList" class="candidate-grid"></div></section>
       <section id="adminPanel" class="section hidden">
         <div class="section-heading"><div><p class="eyebrow">ELECTION MANAGEMENT</p><h2>Administrator console</h2></div><span class="tag purple">Admin access</span></div>
         <p id="adminHelp" class="muted admin-help"></p>
